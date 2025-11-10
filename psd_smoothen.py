@@ -5,7 +5,27 @@ import matplotlib.pyplot as plt
 from scipy.signal import welch
 
 # ============= Normalization Utility =============
-# Function to be written here
+def normalize_spectrum(freqs, psds_arr):
+    if psds_arr.size == 0 or freqs is None:
+        return np.array([])
+
+    # Normalize each PSD first
+    normalized_psds = []
+    for psd in psds_arr:
+        max_val = np.max(psd)
+        if max_val > 0:
+            normalized_psds.append(psd / max_val)
+        else:
+            normalized_psds.append(psd)
+    normalized_psds = np.vstack(normalized_psds)
+
+    # Compute average PSD across normalized frames
+    avg_psd = np.mean(normalized_psds, axis=0)
+
+    # Normalize the averaged PSD
+    avg_psd = avg_psd / np.max(avg_psd)
+
+    return avg_psd
 
 # ============= Environment =============
 class RasyaEnv:
@@ -67,7 +87,7 @@ class RasyaEnv:
             return freqs, np.empty((0, 0)), []
         all_psds_arr = np.vstack(all_psds)
         avg_psd = normalize_spectrum(freqs, all_psds_arr)
-        return freqs, avg_psd, all_psds_arr
+        return freqs / np.max(freqs), avg_psd, all_psds_arr
 
     def psds_all_combined(self):
         all_psds = []
@@ -81,8 +101,13 @@ class RasyaEnv:
                 all_psds.append(avg_psd)
         if len(all_psds) == 0:
             return freqs, np.empty((0,)), []
-        combined_avg = np.mean(np.vstack(all_psds), axis=0)
-        return freqs, combined_avg, np.vstack(all_psds)
+        all_psds = np.vstack(all_psds)
+
+        # Normalize combined average PSD
+        combined_avg = np.mean(all_psds, axis=0)
+        combined_avg = combined_avg / np.max(combined_avg)
+
+        return freqs, combined_avg, all_psds
 
 # ============= Agent =============
 class RasyaPSDAgent:
